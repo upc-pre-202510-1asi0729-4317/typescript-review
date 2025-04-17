@@ -1,43 +1,30 @@
-import { v4 as uuidv4 } from "uuid";
-import {SalesOrderItem} from "./sales-order-item";
-import {DateTime} from "../../../shared/domain/model/date-time";
-import {Currency} from "../../../shared/domain/model/currency";
-import {Money} from "../../../shared/domain/model/money";
-
-/**
- * Type representing the valid states of a sales order.
- */
-export type SalesOrderState = "PENDING" | "CONFIRMED" | "SHIPPED" | "CANCELLED";
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SalesOrder = void 0;
+const uuid_1 = require("uuid");
+const sales_order_item_1 = require("./sales-order-item");
+const date_time_1 = require("../../../shared/domain/model/date-time");
+const money_1 = require("../../../shared/domain/model/money");
 /**
  * Represents a sales order aggregate root in the Sales bounded context, managing its own state transitions.
  */
-export class SalesOrder {
-    private readonly _customerId: string;
-    private readonly _id: string;
-    private readonly _items: SalesOrderItem[];
-    private readonly _orderedAt: DateTime;
-    private readonly _currency: Currency;
-    private _state: SalesOrderState;
-
-    constructor(customerId: string, currency: Currency, orderedAt?: Date | string) {
+class SalesOrder {
+    constructor(customerId, currency, orderedAt) {
         if (!customerId || customerId.trim() === "") {
             throw new Error("Customer ID cannot be empty");
         }
-        this._id = uuidv4();
+        this._id = (0, uuid_1.v4)();
         this._customerId = customerId;
         this._currency = currency;
         this._items = [];
-        this._orderedAt = new DateTime(orderedAt);
+        this._orderedAt = new date_time_1.DateTime(orderedAt);
         this._state = "PENDING";
     }
-
-    public get id(): string { return this._id; }
-    public get customerId(): string { return this._customerId; }
-    public get orderedAt(): DateTime { return this._orderedAt; }
-    public get currency(): Currency { return this._currency; }
-    public get state(): string { return this._state; }
-
+    get id() { return this._id; }
+    get customerId() { return this._customerId; }
+    get orderedAt() { return this._orderedAt; }
+    get currency() { return this._currency; }
+    get state() { return this._state; }
     /**
      * Adds an item to the sales order if the current state allows it.
      * @public
@@ -46,7 +33,7 @@ export class SalesOrder {
      * @param unitPriceAmount - The price per unit.
      * @throws {Error} If productId is empty, quantity is non-positive, or state disallows adding items.
      */
-    public addItem(productId: string, quantity: number, unitPriceAmount: number): void {
+    addItem(productId, quantity, unitPriceAmount) {
         if (!productId || productId.trim() === "") {
             throw new Error("Product ID cannot be empty");
         }
@@ -56,77 +43,70 @@ export class SalesOrder {
         if (!this.canAddItems()) {
             throw new Error(`Cannot add items to a ${this._state} order`);
         }
-        const unitPrice = new Money(unitPriceAmount, this._currency);
-        const item = new SalesOrderItem(this._id, productId.trim(), quantity, unitPrice);
+        const unitPrice = new money_1.Money(unitPriceAmount, this._currency);
+        const item = new sales_order_item_1.SalesOrderItem(this._id, productId.trim(), quantity, unitPrice);
         this._items.push(item);
     }
-
     /**
      * Calculates the total price of all items in the order.
      * @public
      * @returns The total price in the order's currency.
      */
-    public calculateTotalPrice() : Money {
-        return this._items.reduce(
-            (total, item) =>
-                total.add(item.calculateItemPrice()),
-                new Money(0, this._currency)
-        )
+    calculateTotalPrice() {
+        return this._items.reduce((total, item) => total.add(item.calculateItemPrice()), new money_1.Money(0, this._currency));
     }
-
     /**
      * Formats the order date as a human-readable string.
      * @public
      * @returns The formatted date (e.g., "April 9, 2025, 10:30 AM PDT").
      */
-    public getFormattedOrderedAt(): string {
+    getFormattedOrderedAt() {
         return this._orderedAt.format();
     }
-
     /**
      * Confirms the sales order, transitioning it to CONFIRMED if allowed.
      * @public
      * @throws {Error} If the current state does not allow confirmation.
      */
-    public confirm(): void {
+    confirm() {
         if (this._state === "PENDING") {
             this._state = "CONFIRMED";
-        } else {
+        }
+        else {
             throw new Error(`Cannot confirm an order that is ${this._state}`);
         }
     }
-
     /**
      * Ships the sales order, transitioning it to SHIPPED if allowed.
      * @public
      * @throws {Error} If the current state does not allow shipping.
      */
-    public ship(): void {
+    ship() {
         if (this._state === "CONFIRMED") {
             this._state = "SHIPPED";
-        } else {
+        }
+        else {
             throw new Error(`Cannot ship an order that is ${this._state}`);
         }
     }
-
     /**
      * Cancels the sales order, transitioning it to CANCELLED if allowed.
      * @public
      * @throws {Error} If the current state does not allow cancellation.
      */
-    public cancel(): void {
+    cancel() {
         if (this._state === "SHIPPED" || this._state === "CANCELLED") {
             throw new Error(`Cannot cancel an order that is ${this._state}`);
         }
         this._state = "CANCELLED";
     }
-
     /**
      * Checks if items can be added based on the current state.
      * @private
      * @returns True if items can be added, false otherwise.
      */
-    private canAddItems(): boolean {
+    canAddItems() {
         return this._state !== "CANCELLED" && this._state !== "SHIPPED";
     }
 }
+exports.SalesOrder = SalesOrder;
